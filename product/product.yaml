@@ -1,0 +1,12 @@
+_ > nanoagent.plugin.v0001.ProductConfig:
+tagline: "Find a time everyone is free, and answer meeting requests on your terms"
+summary: "Give it everyone's busy times for the week and it finds the earliest slot nobody has a conflict with. Send it a meeting request and it checks your preferred hours and everyone's calendar, then asks you before accepting, or drafts a proposal for the earliest time that works."
+highlights:
+  - "Handles back-to-back, overlapping and after-hours meetings"
+  - "A meeting ending at 10:00 leaves 10:00 free, so slots can touch"
+  - "Never accepts outside your preferred hours, and always asks you first"
+steps:
+  - "List who must attend and when each is busy"
+  - "Say which days, the working hours and the meeting length"
+  - "It returns the earliest free slot, or tells you none fits"
+  - "Or paste a meeting request and answer its notification yes or no"

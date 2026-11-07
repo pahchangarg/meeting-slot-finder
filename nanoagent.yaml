@@ -1,0 +1,61 @@
+_ > nanoagent.plugin.v0001.ManifestConfig:
+id: meeting-slot-finder
+name: Meeting Slot Finder
+version: 0.1.0
+status: ready
+spec: nanoagent.plugin/v0001
+
+runtime > nanoagent.plugin.v0001.RuntimeConfig:
+  type: mcp_stdio
+  command: [uv, run, --frozen, python, -m, plugin]
+
+permissions > nanoagent.plugin.v0001.PermissionsConfig:
+  network > nanoagent.plugin.v0001.NetworkConfig:
+    hosts: []
+  filesystem > nanoagent.plugin.v0001.FilesystemConfig:
+    write: [workspace]
+
+# One entry per contract.Tool; its input and output classes are contract.TOOLS's.
+tools > dict[contract.Tool, nanoagent.plugin.v0001.ToolConfig]:
+  free_gaps:
+    description: List every stretch of the working day, on the given days, when none of the people is busy
+  slot_conflicts:
+    description: List every busy time that overlaps a proposed meeting slot
+  draft_reply:
+    description: Write the notification you answer before anything is sent, and the reply it sends, from fixed templates
+
+# One entry per contract.Task; its input and output classes are contract.TASKS's.
+tasks > dict[contract.Task, nanoagent.plugin.v0001.TaskConfig]:
+  common-free-gaps:
+    description: Show when everyone is free
+    runner: tool
+    tools: [free_gaps]
+    reference: null
+    instructions: List every stretch of the working day on the given days when nobody is busy.
+  slot-conflicts:
+    description: Check who is busy during a proposed slot
+    runner: tool
+    tools: [slot_conflicts]
+    reference: null
+    instructions: List every busy time that shares a minute with the slot.
+  earliest-common-slot:
+    description: Find the earliest time everyone can meet
+    runner: agent
+    tools: [free_gaps, slot_conflicts]
+    reference: null
+    instructions: |-
+      Find the earliest meeting slot of duration_minutes when every person is free, inside the working day, on one of the given days.
+      Call free_gaps with the request's people, days, day_start and day_end. Its gaps come in week order (mon first), then by time. The slot starts at the start of the first gap whose minutes are at least duration_minutes, and ends duration_minutes later.
+      Busy times are half-open: a meeting that ends at 10:00 leaves 10:00 free. You may call slot_conflicts to confirm the slot has no conflicts.
+      Submit the slot's day, start and end as HH:MM. If no gap is long enough, submit day, start and end all as null.
+  reply-to-meeting-request:
+    description: Answer a meeting request inside your preferred hours, asking you before accepting
+    runner: agent
+    tools: [slot_conflicts, free_gaps, draft_reply]
+    reference: null
+    instructions: |-
+      Decide how to answer a meeting request. Nothing is sent: you draft a notification asking the user, and the reply waits for their yes.
+      The requested slot fits when it lies inside the preferred hours (preferred_start to preferred_end) and nobody is busy during it. Call slot_conflicts with the people and the requested day, start and end to see who is busy; busy times are half-open, so a meeting ending at 11:00 leaves 11:00 free.
+      If it fits: decision ask_to_accept, reason fits, busy_names empty, no proposal. Never accept a slot outside the preferred hours.
+      Otherwise the reason is outside_preferred if the slot is outside the preferred hours (busy_names then empty), else conflict, with busy_names the names slot_conflicts returned, in the people's order, each once. Then call free_gaps with the people, days, and the preferred hours as day_start and day_end. Propose the start of the first gap at least as long as the requested meeting, for the same length: decision propose_other with proposed_day, proposed_start and proposed_end. If no gap is long enough: decision decline, no proposal.
+      Call draft_reply with the request, your decision, reason, busy_names and proposal (null when none), and submit your choices with its notification and reply exactly as it returned them.
